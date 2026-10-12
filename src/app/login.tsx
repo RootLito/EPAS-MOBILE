@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -67,30 +68,37 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 justify-between items-center px-6 py-6">
-      {/* TOP SECTION: Logo & Title */}
-      <View className="items-center mt-4">
-        <View className="w-36 h-36 rounded-full bg-sky-100 border-2 border-sky-600 justify-center items-center mb-3 shadow-sm">
-          <Text className="text-sky-800 font-bold text-base">LOGO</Text>
-        </View>
-        <Text className="text-5xl font-extrabold text-gray-900 tracking-wider">
-          BFAR - EPS
+    <SafeAreaView
+      className="flex-1 bg-gray-50 justify-between items-center pt-6 pb-0 px-0"
+      edges={["top", "left", "right"]}
+    >
+      {/* Top Header */}
+      <View className="items-center mt-4 px-6">
+        <Image
+          source={require("../../assets/images/bfar.png")}
+          style={{ width: 180, height: 180 }}
+          resizeMode="contain"
+          className="mb-3"
+        />
+        <Text className="text-5xl font-extrabold text-brand-500 tracking-wider">
+          BFAR XI - EPAS
+        </Text>
+        <Text className="text-sm text-brand-400 tracking-wide mt-1">
+          Event Planner and Attendance System
         </Text>
       </View>
 
-      {/* MIDDLE SECTION: Instructions Box & Embedded Camera Viewport */}
-      <View className="w-full items-center my-auto">
-        {/* Note Box */}
-        <View className="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 flex-row items-center gap-2.5">
-          <Info size={20} color="#b45309" className="shrink-0" />
-          <Text className="text-amber-800 text-sm leading-5 flex-1">
+      {/* Middle Camera Section */}
+      <View className="w-full items-center px-6">
+        <View className="w-full bg-brand-50 border border-brand-200 rounded-xl p-3 mb-5 flex-row items-center gap-2.5">
+          <Info size={20} color="#395886" className="shrink-0" />
+          <Text className="text-brand-500 text-sm leading-5 flex-1">
             Position the barcode inside the camera box below to automatically
             log in or register.
           </Text>
         </View>
 
-        {/* Embedded Scanner Container */}
-        <View className="w-full h-48 rounded-2xl overflow-hidden border-2 border-sky-600 bg-black relative shadow-md">
+        <View className="w-full h-64 rounded-2xl overflow-hidden border border-brand-200 bg-black relative shadow-md">
           <CameraView
             facing="back"
             style={StyleSheet.absoluteFill}
@@ -100,7 +108,6 @@ export default function LoginScreen() {
             }}
           />
 
-          {/* Scanning Indicator Overlay */}
           {scanning && !showRegister && (
             <View className="absolute inset-0 bg-black/60 justify-center items-center">
               <ActivityIndicator size="large" color="#ffffff" />
@@ -110,16 +117,19 @@ export default function LoginScreen() {
             </View>
           )}
         </View>
-      </View>
-
-      {/* BOTTOM SECTION: Footer Attribution */}
-      <View className="items-center mb-2">
-        <Text className="text-gray-400 text-xs font-medium">
-          RFIMU | Developed 2026
+        <Text className="text-brand-500 text-sm mt-12">
+          Developed by RFIMU | BFAR XI © 2026
         </Text>
       </View>
 
-      {/* Registration Modal Dialog */}
+      <View className="w-full relative items-center justify-end">
+        <Image
+          source={require("../../assets/images/back.png")}
+          className="w-full h-40"
+          resizeMode="cover"
+        />
+      </View>
+
       {scannedCode && (
         <RegisterModal
           visible={showRegister}

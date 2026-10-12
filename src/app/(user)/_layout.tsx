@@ -48,6 +48,17 @@ export default function UserLayout() {
     },
   ];
 
+  // Helper to get initials if user image is not available
+  const getInitials = (name?: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
   const renderDrawerContent = () => (
     <SafeAreaView
       className="flex-1 bg-brand-500 justify-between py-6 px-5"
@@ -57,7 +68,7 @@ export default function UserLayout() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View className="flex-row items-center gap-3 mb-8 pt-2">
+        <View className="flex-row items-center gap-3 mb-8 pt-2 border-b border-white/10 pb-4">
           <Image
             source={require("../../../assets/images/white.png")}
             style={{ width: 72, height: 72 }}
@@ -65,7 +76,7 @@ export default function UserLayout() {
           />
           <View>
             <Text className="text-white font-extrabold text-2xl tracking-wide">
-              BFARXI-EPAS
+              BFAR XI-EPAS
             </Text>
             <Text className="text-brand-200 font-medium">Employee Portal</Text>
           </View>
@@ -105,14 +116,49 @@ export default function UserLayout() {
         </View>
       </ScrollView>
 
-      {/* Logout Action */}
-      <TouchableOpacity
-        onPress={logout}
-        className="flex-row items-center justify-center gap-3 py-2 rounded-xl bg-red-400"
-      >
-        <LogOut size={20} color="#ffffff" />
-        <Text className="text-white">Logout</Text>
-      </TouchableOpacity>
+      {/* Footer Section: Flat Profile Card + Logout */}
+      <View className="gap-3">
+        <TouchableOpacity
+          onPress={() => navigateTo("/(user)/profile")}
+          className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10 active:bg-white/20"
+        >
+          {user?.avatar_url ? (
+            <Image
+              source={{ uri: user.avatar_url }}
+              className="w-11 h-11 rounded-full bg-brand-200"
+            />
+          ) : (
+            <View className="w-11 h-11 rounded-full bg-brand-200 justify-center items-center">
+              <Text className="text-brand-500 font-bold text-base">
+                {getInitials(user?.fullname)}
+              </Text>
+            </View>
+          )}
+
+          <View className="flex-1 justify-center">
+            <Text
+              className="text-white font-semibold text-base leading-tight"
+              numberOfLines={1}
+            >
+              {user?.fullname || "User"}
+            </Text>
+            <Text
+              className="text-brand-200 text-xs font-medium mt-0.5"
+              numberOfLines={1}
+            >
+              {user?.position || user?.role || "Employee"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={logout}
+          className="flex-row items-center justify-center gap-2 py-3.5 rounded-xl bg-red-500/90 active:bg-red-600"
+        >
+          <LogOut size={18} color="#ffffff" />
+          <Text className="text-white font-semibold">Logout</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 
@@ -138,9 +184,9 @@ export default function UserLayout() {
             <View className="flex-row items-center justify-between px-5 py-3">
               <TouchableOpacity
                 onPress={() => setOpen(true)}
-                className="w-14 h-14 rounded-full bg-brand-50 justify-center items-center"
+                className="w-14 h-14 rounded-full bg-brand-100 justify-center items-center"
               >
-                <Menu size={28} color="#638ECB" />
+                <Menu size={28} color="#395886" />
               </TouchableOpacity>
 
               <Image

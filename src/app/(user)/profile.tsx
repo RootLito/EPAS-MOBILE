@@ -119,21 +119,29 @@ export default function ProfileScreen() {
             onPress={handlePickAndUploadImage}
             disabled={uploadingImage}
             activeOpacity={0.8}
-            className="absolute -bottom-1 -right-1 bg-orange-600 w-7 h-7 rounded-full items-center justify-center border-2 border-white shadow-md"
+            className="absolute -bottom-1 -right-1 bg-brand-500 w-7 h-7 rounded-full items-center justify-center border-2 border-white shadow-md"
           >
             <Pencil size={12} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
         <View className="flex-1">
-          <Text className="text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+          <Text className="text-3xl font-bold text-brand-500 tracking-tight leading-tight">
             {user?.fullname?.split(" ")[0] || "User"}
           </Text>
           <Text className="text-3xl font-light text-slate-400 tracking-tight leading-tight mb-1">
             {user?.fullname?.split(" ").slice(1).join(" ") || "Profile"}
           </Text>
           <Text className="text-sm font-semibold text-slate-400">
-            Joined <Text className="font-bold text-slate-700">1 year ago</Text>
+            Joined{" "}
+            <Text className="font-bold text-slate-700">
+              {user?.created_at
+                ? new Intl.DateTimeFormat("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  }).format(new Date(user.created_at))
+                : "N/A"}
+            </Text>
           </Text>
         </View>
       </View>
@@ -142,10 +150,10 @@ export default function ProfileScreen() {
         {!isEditing && (
           <TouchableOpacity
             onPress={() => setIsEditing(true)}
-            className="flex-row items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
+            className="flex-row items-center gap-2 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-100"
           >
-            <Edit2 size={13} color="#ea580c" />
-            <Text className="text-orange-600 text-sm">Edit Details</Text>
+            <Edit2 size={13} color="#395886" />
+            <Text className="text-brand-500 text-sm">Edit Details</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -155,8 +163,8 @@ export default function ProfileScreen() {
         {/* Full Name */}
         <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
-            <View className="w-10 h-10 rounded-full bg-orange-100/70 items-center justify-center">
-              <User size={18} color="#ea580c" />
+            <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
+              <User size={18} color="#395886" />
             </View>
             <View className="flex-1">
               <Text className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
@@ -177,7 +185,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           {isEditing ? (
-            <Edit2 size={14} color="#ea580c" />
+            <Edit2 size={14} color="#395886" />
           ) : (
             <ChevronRight size={18} color="#cbd5e1" />
           )}
@@ -186,8 +194,8 @@ export default function ProfileScreen() {
         {/* Position */}
         <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
-            <View className="w-10 h-10 rounded-full bg-orange-100/70 items-center justify-center">
-              <Briefcase size={18} color="#ea580c" />
+            <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
+              <Briefcase size={18} color="#395886" />
             </View>
             <View className="flex-1">
               <Text className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
@@ -208,7 +216,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           {isEditing ? (
-            <Edit2 size={14} color="#ea580c" />
+            <Edit2 size={14} color="#395886" />
           ) : (
             <ChevronRight size={18} color="#cbd5e1" />
           )}
@@ -217,8 +225,8 @@ export default function ProfileScreen() {
         {/* Office / Station */}
         <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
-            <View className="w-10 h-10 rounded-full bg-orange-100/70 items-center justify-center">
-              <Building size={18} color="#ea580c" />
+            <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
+              <Building size={18} color="#395886" />
             </View>
             <View className="flex-1">
               <Text className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
@@ -239,7 +247,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           {isEditing ? (
-            <Edit2 size={14} color="#ea580c" />
+            <Edit2 size={14} color="#395886" />
           ) : (
             <ChevronRight size={18} color="#cbd5e1" />
           )}
@@ -297,7 +305,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={handleSave}
             disabled={loading}
-            className="flex-1 py-3.5 bg-orange-600 rounded-2xl items-center flex-row justify-center gap-1.5 shadow-md"
+            className="flex-1 py-3.5 bg-brand-600 rounded-2xl items-center flex-row justify-center gap-1.5 shadow-md"
           >
             {loading ? (
               <ActivityIndicator size="small" color="#ffffff" />

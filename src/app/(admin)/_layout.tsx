@@ -6,7 +6,6 @@ import {
     Home,
     LogOut,
     Menu,
-    User,
     UserCheck,
     Users,
 } from "lucide-react-native";
@@ -48,7 +47,7 @@ export default function AdminLayout() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View className="flex-row items-center gap-3 mb-8 pt-2">
+        <View className="flex-row items-center gap-3 mb-8 pt-2 border-b border-white/10 pb-4">
           <Image
             source={require("../../../assets/images/white.png")}
             style={{ width: 72, height: 72 }}
@@ -56,7 +55,7 @@ export default function AdminLayout() {
           />
           <View>
             <Text className="text-white font-extrabold text-2xl tracking-wide">
-              BFARXI-EPAS
+              BFAR XI-EPAS
             </Text>
             <Text className="text-brand-200 font-medium">Admin Portal</Text>
           </View>
@@ -96,34 +95,42 @@ export default function AdminLayout() {
         </View>
       </ScrollView>
 
-      {/* User Profile Card */}
-      <View className="flex-row items-center gap-3 p-3.5 bg-white/10 rounded-2xl border border-white/10">
-        <View className="w-11 h-11 rounded-full bg-brand-400 justify-center items-center border-2 border-white/30">
-          <User size={22} color="#ffffff" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-white font-bold text-base" numberOfLines={1}>
-            {user?.fullname || "Admin User"}
-          </Text>
-          <Text
-            className="text-brand-200 text-xs font-medium"
-            numberOfLines={1}
-          >
-            {user?.position || "Administrator"}
-          </Text>
-        </View>
-      </View>
+      <View className="gap-3">
+        {/* Admin Profile Display (Non-touchable) */}
+        <View className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10">
+          <View className="w-11 h-11 rounded-full bg-white justify-center items-center p-1 shadow-sm overflow-hidden">
+            <Image
+              source={require("../../../assets/images/bfar.png")}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          </View>
 
-      {/* Logout Action */}
-      <TouchableOpacity
-        onPress={logout}
-        className="flex-row justify-center items-center gap-3 py-4 bg-red-50 rounded-xl mt-2"
-      >
-        <LogOut size={18} color="#FF5722" />
-        <Text className="text-accent-vibrant font-semibold text-sm">
-          Logout
-        </Text>
-      </TouchableOpacity>
+          <View className="flex-1 justify-center">
+            <Text
+              className="text-white font-bold text-base leading-tight"
+              numberOfLines={1}
+            >
+              {user?.fullname || "Admin User"}
+            </Text>
+            <Text
+              className="text-brand-200 text-xs font-medium mt-0.5"
+              numberOfLines={1}
+            >
+              {user?.position || "Administrator"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Logout Action */}
+        <TouchableOpacity
+          onPress={logout}
+          className="flex-row items-center justify-center gap-2 py-3.5 rounded-xl bg-red-500/90 active:bg-red-600"
+        >
+          <LogOut size={18} color="#ffffff" />
+          <Text className="text-white font-semibold text-sm">Logout</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 
@@ -149,9 +156,9 @@ export default function AdminLayout() {
             <View className="flex-row items-center justify-between px-5 py-3">
               <TouchableOpacity
                 onPress={() => setOpen(true)}
-                className="w-14 h-14 rounded-full bg-brand-50 justify-center items-center"
+                className="w-14 h-14 rounded-full bg-brand-100 justify-center items-center"
               >
-                <Menu size={28} color="#638ECB" />
+                <Menu size={28} color="#395886" />
               </TouchableOpacity>
 
               <Image

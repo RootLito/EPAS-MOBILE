@@ -156,73 +156,80 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
 
   return (
     <View className="w-full" {...panResponder.panHandlers}>
-      {/* Month & Year Header */}
+      {/* Month & Year Header (Outside background container) */}
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-bold text-brand-500">
           {MONTH_NAMES[month]} {year}
         </Text>
       </View>
 
-      {/* Weekdays Header */}
-      <View className="flex-row justify-between mb-2">
-        {WEEKDAYS.map((day, idx) => (
-          <Text
-            key={idx}
-            className="w-[14.28%] text-center text-sm font-semibold text-slate-400"
-          >
-            {day}
-          </Text>
-        ))}
-      </View>
+      {/* Calendar Card Container */}
+      <View className="bg-brand-500 rounded-3xl p-4">
+        {/* Weekdays Header */}
+        <View className="flex-row justify-between mb-2">
+          {WEEKDAYS.map((day, idx) => (
+            <Text
+              key={idx}
+              className="w-[14.28%] text-center text-sm font-extrabold text-white/80"
+            >
+              {day}
+            </Text>
+          ))}
+        </View>
 
-      <View className="h-[1px] bg-slate-200 mb-4" />
+        <View className="h-[1px] bg-white/20 mb-4" />
 
-      {/* Grid */}
-      <View className="flex-row flex-wrap">
-        {cells.map((cell, idx) => {
-          const targetDate = new Date(year, month + cell.monthOffset, cell.day);
-          const formattedMonth = String(targetDate.getMonth() + 1).padStart(
-            2,
-            "0",
-          );
-          const formattedDay = String(targetDate.getDate()).padStart(2, "0");
-          const dateStr = `${targetDate.getFullYear()}-${formattedMonth}-${formattedDay}`;
+        {/* Grid */}
+        <View className="flex-row flex-wrap">
+          {cells.map((cell, idx) => {
+            const targetDate = new Date(
+              year,
+              month + cell.monthOffset,
+              cell.day,
+            );
+            const formattedMonth = String(targetDate.getMonth() + 1).padStart(
+              2,
+              "0",
+            );
+            const formattedDay = String(targetDate.getDate()).padStart(2, "0");
+            const dateStr = `${targetDate.getFullYear()}-${formattedMonth}-${formattedDay}`;
 
-          const isSelected = selectedDate === dateStr;
-          const isEventDay =
-            highlightedDates.includes(dateStr) ||
-            events.some((e) => e.start_date?.startsWith(dateStr));
+            const isSelected = selectedDate === dateStr;
+            const isEventDay =
+              highlightedDates.includes(dateStr) ||
+              events.some((e) => e.start_date?.startsWith(dateStr));
 
-          let circleStyle = "";
-          if (isSelected) {
-            circleStyle = "bg-slate-900";
-          } else if (isEventDay && cell.currentMonth) {
-            circleStyle = "bg-blue-100";
-          }
+            let circleStyle = "";
+            if (isSelected) {
+              circleStyle = "bg-white";
+            } else if (isEventDay && cell.currentMonth) {
+              circleStyle = "bg-white/20";
+            }
 
-          return (
-            <View key={idx} className="w-[14.28%] aspect-square p-1">
-              <TouchableOpacity
-                onPress={() => handleDayPress(cell)}
-                className={`w-full h-full justify-center items-center rounded-full ${circleStyle}`}
-              >
-                <Text
-                  className={`text-base font-semibold ${
-                    isSelected
-                      ? "text-white font-bold"
-                      : isEventDay && cell.currentMonth
-                        ? "text-slate-900 font-bold"
-                        : cell.currentMonth
-                          ? "text-slate-800"
-                          : "text-slate-300"
-                  }`}
+            return (
+              <View key={idx} className="w-[14.28%] aspect-square p-1">
+                <TouchableOpacity
+                  onPress={() => handleDayPress(cell)}
+                  className={`w-full h-full justify-center items-center rounded-full ${circleStyle}`}
                 >
-                  {cell.day}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })}
+                  <Text
+                    className={`text-base font-semibold ${
+                      isSelected
+                        ? "text-brand-500 font-bold"
+                        : isEventDay && cell.currentMonth
+                          ? "text-white font-bold"
+                          : cell.currentMonth
+                            ? "text-white"
+                            : "text-white/40"
+                    }`}
+                  >
+                    {cell.day}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
       </View>
 
       {/* Centered Picker Modal for 2+ events */}

@@ -12,7 +12,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ item }) => {
   const lastName = item?.fullname?.split(" ").slice(1).join(" ") || "";
 
   return (
-    <View className="w-[48%] p-4 mb-3 bg-white rounded-2xl border border-slate-200/70 shadow-sm items-center">
+    <View className="w-[48%] p-4 mb-3 bg-slate-50 rounded-2xl border border-slate-200/70 shadow-sm items-center">
       {/* Centered Avatar */}
       <View className="w-28 h-28 rounded-full bg-slate-100 items-center justify-center mb-3 overflow-hidden border border-slate-200">
         {item.avatar_url ? (
