@@ -1,3 +1,4 @@
+// app/(user)/attendance.tsx
 import { Calendar, ChevronDown, Search, UserCheck } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,16 +11,18 @@ import {
     View,
 } from "react-native";
 
+import { AdminPhotoModal } from "@/components/admin/AdminPhotoModal";
 import {
     UserAttendanceRow,
     UserEventAttendanceRow,
 } from "@/components/UserAttendanceRow";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { attendanceService } from "@/services/attendanceService";
 import { Attendance } from "@/types/attendance";
 import { Event } from "@/types/event";
 
 export default function AttendanceScreen() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -28,30 +31,28 @@ export default function AttendanceScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    url: string | null;
+    title: string;
+  } | null>(null);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-
-      // Always fetch events first
       const fetchedEvents = await attendanceService.getEvents();
       setEvents(fetchedEvents);
 
-      // Fetch user session safely
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
+      if (user?.id) {
         const fetchedLogs = await attendanceService.getUserAttendanceLogs(
           user.id,
           selectedEvent?.id,
         );
-        setUserLogs(fetchedLogs);
+        setUserLogs(fetchedLogs || []);
       } else {
         setUserLogs([]);
       }
     } catch (err) {
-      console.error("Failed to load attendance data:", err);
+      console.error("Failed to load user attendance data:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -59,8 +60,10 @@ export default function AttendanceScreen() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [selectedEvent]);
+    if (user?.id) {
+      fetchData();
+    }
+  }, [selectedEvent, user?.id]);
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return undefined;
@@ -79,7 +82,6 @@ export default function AttendanceScreen() {
     });
   };
 
-  // Map all events to rows and attach logs if present
   const attendanceRows = useMemo<UserEventAttendanceRow[]>(() => {
     const logsByEvent: Record<string, Attendance[]> = {};
     userLogs.forEach((log) => {
@@ -115,18 +117,38 @@ export default function AttendanceScreen() {
         event_title: ev.title,
         event_date: formatDate(ev.start_date),
         status,
+        time_in: undefined,
+        break_out: undefined,
+        break_in: undefined,
+        time_out: undefined,
+        time_in_photo: null,
+        break_out_photo: null,
+        break_in_photo: null,
+        time_out_photo: null,
       };
 
       logs.forEach((log) => {
         const formatted = formatTime(log.scanned_at);
-        if (log.scan_type === "time_in" && !row.time_in)
-          row.time_in = formatted;
-        if (log.scan_type === "break_out" && !row.break_out)
-          row.break_out = formatted;
-        if (log.scan_type === "break_in" && !row.break_in)
-          row.break_in = formatted;
-        if (log.scan_type === "time_out" && !row.time_out)
-          row.time_out = formatted;
+        const scanTypeLower = log.scan_type?.toLowerCase();
+
+        if (scanTypeLower && formatted) {
+          if (scanTypeLower === "time_in") {
+            row.time_in = formatted;
+            row.time_in_photo = log.selfie_url;
+          }
+          if (scanTypeLower === "break_out") {
+            row.break_out = formatted;
+            row.break_out_photo = log.selfie_url;
+          }
+          if (scanTypeLower === "break_in") {
+            row.break_in = formatted;
+            row.break_in_photo = log.selfie_url;
+          }
+          if (scanTypeLower === "time_out") {
+            row.time_out = formatted;
+            row.time_out_photo = log.selfie_url;
+          }
+        }
       });
 
       return row;
@@ -142,32 +164,30 @@ export default function AttendanceScreen() {
 
   return (
     <View className="flex-1 px-6 bg-white">
-      {/* Page Header */}
-      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight">
+      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight mt-2">
         My Attendance
       </Text>
 
-      {/* Search Input */}
       <View className="flex-row items-center bg-slate-100 px-4 py-3 rounded-2xl mb-3 border border-slate-200/50">
-        <Search size={20} color="#94A3B8" />
+        <Search size={18} color="#94A3B8" />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search Event title..."
           placeholderTextColor="#94A3B8"
-          className="flex-1 ml-3 text-base text-slate-800 font-medium p-0"
+          className="flex-1 ml-3 text-sm text-slate-800 font-medium p-0"
         />
       </View>
 
       {/* Event Filter Dropdown */}
-      <View className="z-20 mb-4">
+      <View className="mb-4">
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => setIsDropdownOpen(!isDropdownOpen)}
           className="flex-row items-center justify-between bg-slate-100 px-4 py-3 rounded-2xl border border-slate-200/50"
         >
           <View className="flex-row items-center flex-1 pr-2">
-            <Calendar size={18} color="#64748B" />
+            <Calendar size={18} color="#395886" />
             <Text
               className="ml-2.5 text-sm font-semibold text-slate-700"
               numberOfLines={1}
@@ -178,17 +198,19 @@ export default function AttendanceScreen() {
           <ChevronDown size={18} color="#64748B" />
         </TouchableOpacity>
 
+        {/* No more absolute! It is now part of the flow. It will scroll perfectly. */}
         {isDropdownOpen && (
-          <View className="absolute top-14 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-52 z-30 overflow-hidden">
-            <ScrollView nestedScrollEnabled>
+          <View className="h-52 mt-2 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 10 }}
+            >
               <TouchableOpacity
                 onPress={() => {
                   setSelectedEvent(null);
                   setIsDropdownOpen(false);
                 }}
-                className={`px-4 py-3 border-b border-slate-100 ${
-                  selectedEvent === null ? "bg-slate-50" : ""
-                }`}
+                className={`px-4 py-3 border-b border-slate-100 ${selectedEvent === null ? "bg-slate-50" : ""}`}
               >
                 <Text className="font-bold text-slate-800">All Events</Text>
               </TouchableOpacity>
@@ -200,9 +222,7 @@ export default function AttendanceScreen() {
                     setSelectedEvent(ev);
                     setIsDropdownOpen(false);
                   }}
-                  className={`px-4 py-3 border-b border-slate-100 ${
-                    selectedEvent?.id === ev.id ? "bg-slate-50" : ""
-                  }`}
+                  className={`px-4 py-3 border-b border-slate-100 ${selectedEvent?.id === ev.id ? "bg-slate-50" : ""}`}
                 >
                   <Text
                     className="font-medium text-slate-700"
@@ -220,10 +240,9 @@ export default function AttendanceScreen() {
         )}
       </View>
 
-      {/* Attendance Table */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0284C7" />
+          <ActivityIndicator size="large" color="#395886" />
         </View>
       ) : (
         <ScrollView
@@ -233,22 +252,22 @@ export default function AttendanceScreen() {
         >
           <View>
             <View className="flex-row bg-slate-100 py-3 px-2 rounded-xl border border-slate-200/60 mb-2">
-              <Text className="w-52 font-bold text-slate-700 text-sm">
+              <Text className="w-52 font-bold text-slate-700 text-xs">
                 Event
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-24 font-bold text-slate-700 text-xs text-center">
                 Status
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Time In
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Break Out
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Break In
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Time Out
               </Text>
             </View>
@@ -256,17 +275,29 @@ export default function AttendanceScreen() {
             <FlatList
               data={attendanceRows}
               keyExtractor={(item) => item.key}
-              renderItem={({ item }) => <UserAttendanceRow item={item} />}
+              renderItem={({ item }) => (
+                <UserAttendanceRow
+                  item={item}
+                  onPhotoPress={(url, title) =>
+                    setSelectedPhoto({ url, title })
+                  }
+                />
+              )}
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
                 fetchData();
               }}
               ListEmptyComponent={
-                <View className="py-12 items-center justify-center">
-                  <UserCheck size={40} color="#CBD5E1" />
-                  <Text className="text-slate-400 font-medium text-base mt-2">
-                    No events found.
+                <View className="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 items-center justify-center my-6 w-80 self-center">
+                  <View className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 items-center justify-center mb-3.5">
+                    <UserCheck size={28} color="#395886" />
+                  </View>
+                  <Text className="text-base font-bold text-brand-500 tracking-tight">
+                    No Attendance Records
+                  </Text>
+                  <Text className="text-xs text-slate-400 text-center mt-1.5 max-w-[240px] leading-relaxed font-medium">
+                    You haven't checked in to any events yet.
                   </Text>
                 </View>
               }
@@ -274,6 +305,13 @@ export default function AttendanceScreen() {
           </View>
         </ScrollView>
       )}
+
+      <AdminPhotoModal
+        visible={selectedPhoto !== null}
+        imageUrl={selectedPhoto?.url || null}
+        name={selectedPhoto?.title || ""}
+        onClose={() => setSelectedPhoto(null)}
+      />
     </View>
   );
 }

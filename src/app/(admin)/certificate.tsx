@@ -1,19 +1,21 @@
-import { Calendar, ChevronDown, Plus, Search } from "lucide-react-native";
+import { Calendar, ChevronDown, Plus, Search, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
+    Modal,
     ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { WebView } from "react-native-webview";
 
 import { CertificateList } from "@/components/CertificateList";
 import { UploadCertificateModal } from "@/components/UploadCertificateModal";
 import { certificateService } from "@/services/certificateService";
 import { getEvents } from "@/services/eventService";
-import { openPdfViewer } from "@/services/pdfViewer"; // 👈 1. IMPORT HELPER
 import { Certificate } from "@/types/certificate";
 import { Event } from "@/types/event";
 
@@ -26,6 +28,9 @@ const CertificateScreen = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // WebView Modal State
+  const [viewingUrl, setViewingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -81,9 +86,9 @@ const CertificateScreen = () => {
     ]);
   };
 
-  // 👈 2. DIRECT TRIGGER (No extra component needed)
+  // Trigger WebView viewer modal
   const handleViewPdf = (url: string) => {
-    openPdfViewer(url);
+    setViewingUrl(url);
   };
 
   const formatDate = (dateStr: string) =>
@@ -100,10 +105,20 @@ const CertificateScreen = () => {
     return eventTitle.includes(query) || fileName.includes(query);
   });
 
+  // Helper to check if file needs online document viewer wrapper
+  const needsDocumentViewer = (url: string) => {
+    const lower = url.toLowerCase();
+    return (
+      lower.includes(".pdf") ||
+      lower.includes(".docx") ||
+      lower.includes(".doc")
+    );
+  };
+
   return (
-    <View className="flex-1 px-6">
+    <View className="flex-1 px-6 bg-white">
       {/* Title */}
-      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight">
+      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight mt-2">
         Certificate of Appearance
       </Text>
 
@@ -113,7 +128,7 @@ const CertificateScreen = () => {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search by event title or PDF name..."
+          placeholder="Search by event title or file name..."
           placeholderTextColor="#94A3B8"
           className="flex-1 ml-3 text-base text-slate-800 font-medium p-0"
         />
@@ -127,14 +142,12 @@ const CertificateScreen = () => {
           className="flex-row items-center justify-between bg-slate-100 px-4 py-3 rounded-2xl border border-slate-200/50"
         >
           <View className="flex-row items-center flex-1 pr-2">
-            <Calendar size={18} color="#64748B" />
+            <Calendar size={18} color="#395886" />
             <Text
               className="ml-2.5 text-sm font-semibold text-slate-700"
               numberOfLines={1}
             >
-              {selectedEvent
-                ? selectedEvent.title
-                : "All Events (Latest First)"}
+              {selectedEvent ? selectedEvent.title : "All Events"}
             </Text>
           </View>
           <ChevronDown size={18} color="#64748B" />
@@ -194,7 +207,7 @@ const CertificateScreen = () => {
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => setIsModalOpen(true)}
-        className="absolute bottom-8 right-6 w-16 h-16 rounded-full bg-brand-500 justify-center items-center shadow-lg border border-white/20 z-50"
+        className="absolute bottom-8 right-6 w-20 h-20 rounded-full bg-brand-500 justify-center items-center shadow-lg border border-white/20 z-50"
         style={{
           elevation: 6,
           shadowColor: "#000",
@@ -203,16 +216,58 @@ const CertificateScreen = () => {
           shadowRadius: 5,
         }}
       >
-        <Plus size={28} color="#FFFFFF" />
+        <Plus size={26} color="#ffffff" />
       </TouchableOpacity>
 
-      {/* Modal Component */}
+      {/* Upload Modal Component */}
       <UploadCertificateModal
         visible={isModalOpen}
         events={events}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveCertificate}
       />
+
+      {/* Full-Screen WebView Document Viewer Modal */}
+      <Modal
+        visible={!!viewingUrl}
+        animationType="slide"
+        onRequestClose={() => setViewingUrl(null)}
+      >
+        <View className="flex-1 bg-white">
+          {/* Header */}
+          <View className="flex-row items-center justify-between px-6 pt-12 pb-4 bg-brand-500">
+            <Text className="text-white font-bold text-lg">
+              Document Viewer
+            </Text>
+            <TouchableOpacity
+              onPress={() => setViewingUrl(null)}
+              className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
+            >
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* WebView with Google Docs Viewer support for PDF & DOCX */}
+          {viewingUrl && (
+            <WebView
+              source={{
+                uri: needsDocumentViewer(viewingUrl)
+                  ? `https://docs.google.com/viewer?url=${encodeURIComponent(
+                      viewingUrl,
+                    )}&embedded=true`
+                  : viewingUrl,
+              }}
+              style={{ flex: 1 }}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View className="absolute inset-0 justify-center items-center bg-white">
+                  <ActivityIndicator size="large" color="#395886" />
+                </View>
+              )}
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };

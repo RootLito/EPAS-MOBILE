@@ -54,9 +54,11 @@ export async function getEventById(id: string): Promise<Event | null> {
  */
 async function generateAndUploadQRCode(qrCode: string): Promise<string | undefined> {
   try {
-    const qrApiUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrCode)}&size=300&margin=2`;
-    const response = await fetch(qrApiUrl);
+    // Embed the web URL so phone camera apps open the link directly in the browser
+    const checkInUrl = `https://epasweb.vercel.app/check-in/${qrCode}`;
+    const qrApiUrl = `https://quickchart.io/qr?text=${encodeURIComponent(checkInUrl)}&size=300&margin=2`;
 
+    const response = await fetch(qrApiUrl);
     if (!response.ok) throw new Error("Failed to generate QR image via API");
 
     const arrayBuffer = await response.arrayBuffer();
@@ -120,6 +122,8 @@ export async function createEvent(input: CreateEventInput): Promise<Event> {
         details: input.details,
         start_date: input.start_date,
         end_date: input.end_date,
+        break_out_date: input.break_out_date,
+        break_in_date: input.break_in_date,
         timeline_type: input.timeline_type,
         venue_id: venueData.id,
         qr_code: qrCode,
@@ -160,6 +164,7 @@ export async function createEvent(input: CreateEventInput): Promise<Event> {
  * Update Event and its Venue
  */
 export async function updateEvent(input: UpdateEventInput): Promise<Event> {
+  // 1. Update Venue if provided
   if (input.venue && input.venue_id) {
     const { error: venueError } = await supabase
       .from("venues")
@@ -170,12 +175,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<Event> {
       })
       .eq("id", input.venue_id);
 
-    if (venueError) {
-      console.error("Error updating venue:", venueError);
-      throw venueError;
-    }
+    if (venueError) throw venueError;
   }
 
+  // 2. Update Event details
   const { error: eventError } = await supabase
     .from("events")
     .update({
@@ -183,13 +186,41 @@ export async function updateEvent(input: UpdateEventInput): Promise<Event> {
       details: input.details,
       start_date: input.start_date,
       end_date: input.end_date,
+      break_out_date: input.break_out_date,
+      break_in_date: input.break_in_date,
       timeline_type: input.timeline_type,
     })
     .eq("id", input.id);
 
-  if (eventError) {
-    console.error("Error updating event:", eventError);
-    throw eventError;
+  if (eventError) throw eventError;
+
+  // 3. Handle Attachments (Clear old ones and insert new ones if provided)
+  if (input.attachments) {
+    const { error: deleteError } = await supabase
+      .from("event_attachments")
+      .delete()
+      .eq("event_id", input.id);
+
+    if (deleteError) {
+      console.error("Error clearing old attachments:", deleteError);
+    }
+
+    if (input.attachments.length > 0) {
+      const attachmentRecords = input.attachments.map((att) => ({
+        event_id: input.id,
+        file_name: att.file_name,
+        file_url: att.file_url,
+        size_bytes: att.size_bytes ?? 0,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("event_attachments")
+        .insert(attachmentRecords);
+
+      if (insertError) {
+        console.error("Error adding new attachments:", insertError);
+      }
+    }
   }
 
   return getEventById(input.id) as Promise<Event>;

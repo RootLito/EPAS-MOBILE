@@ -1,3 +1,4 @@
+// app/(admin)/attendance.tsx
 import { Calendar, ChevronDown, Search, UserCheck } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,29 +11,48 @@ import {
     View,
 } from "react-native";
 
-import { AttendanceRow } from "@/components/AttendanceRow";
+import { AdminAttendanceRow } from "@/components/admin/AdminAttendanceRow";
+import { AdminPhotoModal } from "@/components/admin/AdminPhotoModal";
 import { attendanceService } from "@/services/attendanceService";
-import { Attendance, AttendanceSummaryRow } from "@/types/attendance";
+import { AttendanceRow } from "@/types/attendance";
 import { Event } from "@/types/event";
 
 export default function AttendanceScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [participantType, setParticipantType] = useState<"bfar" | "non_bfar">(
+    "bfar",
+  );
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [rawLogs, setRawLogs] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Raw logs data
+  const [bfarLogs, setBfarLogs] = useState<any[]>([]);
+  const [nonBfarLogs, setNonBfarLogs] = useState<any[]>([]);
+
+  // Selected photo for modal
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    url: string | null;
+    name: string;
+    org: string;
+  } | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [fetchedEvents, fetchedLogs] = await Promise.all([
+
+      const [fetchedEvents, bfarData, nonBfarData] = await Promise.all([
         attendanceService.getEvents(),
         attendanceService.getAttendanceLogs(selectedEvent?.id),
+        attendanceService.getNonBfarAttendances(selectedEvent?.id),
       ]);
+
       setEvents(fetchedEvents);
-      setRawLogs(fetchedLogs);
+      setBfarLogs(bfarData);
+      setNonBfarLogs(nonBfarData);
     } catch (err) {
       console.error("Failed to load attendance data:", err);
     } finally {
@@ -45,94 +65,143 @@ export default function AttendanceScreen() {
     fetchData();
   }, [selectedEvent]);
 
-  const formatTime = (isoString?: string) => {
-    if (!isoString) return undefined;
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+  // Transform data into unified AttendanceRow structure (matches Web Admin)
+  const attendanceRows = useMemo<AttendanceRow[]>(() => {
+    let rows: AttendanceRow[] = [];
 
-  const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+    if (participantType === "bfar") {
+      const userMap: Record<string, any> = {};
 
-  // Group raw scan rows into structured table rows
-  const attendanceRows = useMemo<AttendanceSummaryRow[]>(() => {
-    const map: Record<string, AttendanceSummaryRow> = {};
+      bfarLogs.forEach((item) => {
+        const uid = item.user_id;
+        const profile = item.profile || item.users;
 
-    rawLogs.forEach((log) => {
-      // Safely fallback to log.profile or log.users depending on Supabase type resolution
-      const userProfile = log.profile || (log as any).users;
-      const eventDetail = log.event || (log as any).events;
+        if (!userMap[uid]) {
+          userMap[uid] = {
+            userId: uid,
+            name: profile?.fullname || "Unknown User",
+            office: profile?.office || "—",
+            time_in: null,
+            break_out: null,
+            break_in: null,
+            time_out: null,
+            firstScanTime: null,
+            time_in_photo: null,
+            break_out_photo: null,
+            break_in_photo: null,
+            time_out_photo: null,
+          };
+        }
 
-      const dateKey = log.scanned_at
-        ? new Date(log.scanned_at).toISOString().split("T")[0]
-        : "no-date";
-      const rowKey = `${log.user_id}_${log.event_id}_${dateKey}`;
+        if (item.scan_type && item.scanned_at) {
+          userMap[uid][item.scan_type] = item.scanned_at;
 
-      if (!map[rowKey]) {
-        map[rowKey] = {
-          key: rowKey,
-          user_id: log.user_id,
-          event_id: log.event_id,
-          event_title: eventDetail?.title || "Event",
-          fullname: userProfile?.fullname || "Unknown User",
-          scanned_date: log.scanned_at ? formatDate(log.scanned_at) : "N/A",
-        };
-      }
+          if (item.selfie_url) {
+            userMap[uid][`${item.scan_type}_photo`] = item.selfie_url;
+          }
 
-      const formatted = formatTime(log.scanned_at);
-      if (log.scan_type === "time_in" && !map[rowKey].time_in)
-        map[rowKey].time_in = formatted;
-      if (log.scan_type === "break_out" && !map[rowKey].break_out)
-        map[rowKey].break_out = formatted;
-      if (log.scan_type === "break_in" && !map[rowKey].break_in)
-        map[rowKey].break_in = formatted;
-      if (log.scan_type === "time_out" && !map[rowKey].time_out)
-        map[rowKey].time_out = formatted;
-    });
+          if (
+            !userMap[uid].firstScanTime ||
+            new Date(item.scanned_at) < new Date(userMap[uid].firstScanTime)
+          ) {
+            userMap[uid].firstScanTime = item.scanned_at;
+          }
+        }
+      });
 
-    let records = Object.values(map);
+      rows = Object.values(userMap);
+    } else {
+      // Non-BFAR Attendees
+      rows = nonBfarLogs.map((att) => ({
+        userId: att.id,
+        name: att.full_name || "Unknown Guest",
+        office: att.organization || "—",
+        time_in: att.checked_in_at || null,
+        break_out: att.break_out_at || null,
+        break_in: att.break_in_at || null,
+        time_out: att.checked_out_at || null,
+        firstScanTime: att.checked_in_at || null,
+        time_in_photo: att.selfie_url || null,
+        break_out_photo: att.break_out_selfie_url || null,
+        break_in_photo: att.break_in_selfie_url || null,
+        time_out_photo: att.checked_out_selfie_url || null,
+      }));
+    }
 
-    // Search query filters users (all user attendance) OR events (all users present in event)
+    // Filter by search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      records = records.filter(
-        (rec) =>
-          rec.fullname.toLowerCase().includes(q) ||
-          rec.event_title.toLowerCase().includes(q),
+      rows = rows.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          r.office.toLowerCase().includes(q),
       );
     }
 
-    return records;
-  }, [rawLogs, searchQuery]);
+    return rows;
+  }, [participantType, bfarLogs, nonBfarLogs, searchQuery]);
 
   return (
-    <View className="flex-1 px-6">
-      {/* Page Header */}
-      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight">
-        Attendance
+    <View className="flex-1 px-6 bg-white">
+      {/* 1. Page Header */}
+      <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight mt-2">
+        Event Attendance
       </Text>
 
-      {/* Search Input */}
+      {/* 2. Participant Category Tabs */}
+      <View className="flex-row gap-2 mb-3">
+        <TouchableOpacity
+          onPress={() => setParticipantType("bfar")}
+          className={`flex-1 py-2.5 rounded-xl items-center justify-center border ${
+            participantType === "bfar"
+              ? "bg-brand-500 border-brand-500"
+              : "bg-slate-50 border-slate-200"
+          }`}
+        >
+          <Text
+            className={`font-bold text-xs ${
+              participantType === "bfar" ? "text-white" : "text-slate-600"
+            }`}
+          >
+            BFAR Personnel
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setParticipantType("non_bfar")}
+          className={`flex-1 py-2.5 rounded-xl items-center justify-center border ${
+            participantType === "non_bfar"
+              ? "bg-brand-500 border-brand-500"
+              : "bg-slate-50 border-slate-200"
+          }`}
+        >
+          <Text
+            className={`font-bold text-xs ${
+              participantType === "non_bfar" ? "text-white" : "text-slate-600"
+            }`}
+          >
+            Non-BFAR Guests
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 3. Search Bar */}
       <View className="flex-row items-center bg-slate-100 px-4 py-3 rounded-2xl mb-3 border border-slate-200/50">
-        <Search size={20} color="#94A3B8" />
+        <Search size={18} color="#94A3B8" />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search by User or Event title..."
+          placeholder={
+            participantType === "bfar"
+              ? "Search by Name or Office..."
+              : "Search by Name or Organization..."
+          }
           placeholderTextColor="#94A3B8"
-          className="flex-1 ml-3 text-base text-slate-800 font-medium p-0"
+          className="flex-1 ml-3 text-sm text-slate-800 font-medium p-0"
         />
       </View>
 
-      {/* Event Filter Dropdown */}
+      {/* 4. Event Filter Dropdown */}
       <View className="z-20 mb-4">
         <TouchableOpacity
           activeOpacity={0.7}
@@ -140,14 +209,12 @@ export default function AttendanceScreen() {
           className="flex-row items-center justify-between bg-slate-100 px-4 py-3 rounded-2xl border border-slate-200/50"
         >
           <View className="flex-row items-center flex-1 pr-2">
-            <Calendar size={18} color="#64748B" />
+            <Calendar size={18} color="#395886" />
             <Text
               className="ml-2.5 text-sm font-semibold text-slate-700"
               numberOfLines={1}
             >
-              {selectedEvent
-                ? selectedEvent.title
-                : "All Events (Latest First)"}
+              {selectedEvent ? selectedEvent.title : "All Events"}
             </Text>
           </View>
           <ChevronDown size={18} color="#64748B" />
@@ -185,9 +252,6 @@ export default function AttendanceScreen() {
                   >
                     {ev.title}
                   </Text>
-                  <Text className="text-xs text-slate-400 mt-0.5">
-                    {formatDate(ev.start_date)}
-                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -195,10 +259,10 @@ export default function AttendanceScreen() {
         )}
       </View>
 
-      {/* Attendance Table */}
+      {/* 5. Attendance Matrix Table */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0284C7" />
+          <ActivityIndicator size="large" color="#395886" />
         </View>
       ) : (
         <ScrollView
@@ -207,39 +271,54 @@ export default function AttendanceScreen() {
           className="flex-1"
         >
           <View>
+            {/* Header Columns */}
             <View className="flex-row bg-slate-100 py-3 px-2 rounded-xl border border-slate-200/60 mb-2">
-              <Text className="w-52 font-bold text-slate-700 text-sm">
-                Fullname
+              <Text className="w-48 font-bold text-slate-700 text-xs">
+                {participantType === "bfar"
+                  ? "Participant & Office"
+                  : "Guest & Organization"}
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Time In
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Break Out
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Break In
               </Text>
-              <Text className="w-24 font-bold text-slate-700 text-sm text-center">
+              <Text className="w-20 font-bold text-slate-700 text-xs text-center">
                 Time Out
               </Text>
             </View>
 
+            {/* Attendance Rows */}
             <FlatList
               data={attendanceRows}
-              keyExtractor={(item) => item.key}
-              renderItem={({ item }) => <AttendanceRow item={item} />}
-              contentContainerClassName="px-6"
+              keyExtractor={(item) => item.userId}
+              renderItem={({ item }) => (
+                <AdminAttendanceRow
+                  item={item}
+                  onPhotoPress={(url, name, org) =>
+                    setSelectedPhoto({ url, name, org })
+                  }
+                />
+              )}
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
                 fetchData();
               }}
               ListEmptyComponent={
-                <View className="py-12 items-center justify-center">
-                  <UserCheck size={40} color="#CBD5E1" />
-                  <Text className="text-slate-400 font-medium text-base mt-2">
-                    No attendance records found.
+                <View className="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 items-center justify-center my-6 w-80 self-center">
+                  <View className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 items-center justify-center mb-3.5">
+                    <UserCheck size={28} color="#395886" />
+                  </View>
+                  <Text className="text-base font-bold text-brand-500 tracking-tight">
+                    No Attendance Records
+                  </Text>
+                  <Text className="text-xs text-slate-400 text-center mt-1.5 max-w-[240px] leading-relaxed font-medium">
+                    No check-in logs found for this event selection.
                   </Text>
                 </View>
               }
@@ -247,6 +326,15 @@ export default function AttendanceScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Full Photo Modal */}
+      <AdminPhotoModal
+        visible={selectedPhoto !== null}
+        imageUrl={selectedPhoto?.url || null}
+        name={selectedPhoto?.name || ""}
+        organization={selectedPhoto?.org}
+        onClose={() => setSelectedPhoto(null)}
+      />
     </View>
   );
 }

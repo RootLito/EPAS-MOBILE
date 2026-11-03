@@ -3,10 +3,11 @@ import { Slot, usePathname, useRouter } from "expo-router";
 import {
     Award,
     Calendar,
+    CalendarCheck2,
+    Flag,
     Home,
     LogOut,
     Menu,
-    UserCheck,
     Users,
 } from "lucide-react-native";
 import { useState } from "react";
@@ -24,7 +25,12 @@ export default function AdminLayout() {
   const navItems = [
     { label: "Home", path: "/(admin)/home", icon: Home },
     { label: "Event", path: "/(admin)/event", icon: Calendar },
-    { label: "Attendance", path: "/(admin)/attendance", icon: UserCheck },
+    {
+      label: "Event Attendance",
+      path: "/(admin)/attendance",
+      icon: CalendarCheck2,
+    },
+    { label: "Flag Attendance", path: "/(admin)/flag", icon: Flag },
     {
       label: "Certificate",
       path: "/(admin)/certificate",

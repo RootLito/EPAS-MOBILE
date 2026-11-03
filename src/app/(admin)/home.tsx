@@ -1,11 +1,13 @@
+// app/(tabs)/home.tsx
 import { CustomCalendar } from "@/components/CustomCalendar";
 import { EventCard } from "@/components/EventCard";
 import { EventDetailModal } from "@/components/EventDetailModal";
 import { getCalendarEvents } from "@/services/calendarService";
+import { eventClassificationService } from "@/services/eventClassificationService";
 import { Event } from "@/types";
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { CalendarDays, Plus } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     RefreshControl,
@@ -26,7 +28,7 @@ const Home = () => {
     new Date().toISOString().split("T")[0],
   );
 
-  // Modal State strictly for lower EventCards (if needed)
+  // Modal State for tapping EventCards
   const [selectedCardEvent, setSelectedCardEvent] = useState<Event | null>(
     null,
   );
@@ -35,7 +37,9 @@ const Home = () => {
   const fetchEvents = useCallback(async () => {
     try {
       const { rawEvents, highlightedDates: dates } = await getCalendarEvents();
-      setEvents(rawEvents);
+      // Enrich all events with real-time dynamic classification
+      const enriched = eventClassificationService.enrichEvents(rawEvents || []);
+      setEvents(enriched);
       setHighlightedDates(dates);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -59,15 +63,19 @@ const Home = () => {
     setCardModalVisible(true);
   };
 
-  const upcomingEvents = events.filter(
-    (event) => event.status?.toLowerCase() === "upcoming",
-  );
+  // Group events into dynamic buckets using eventClassificationService
+  const classified = useMemo(() => {
+    return eventClassificationService.groupEvents(events);
+  }, [events]);
+
+  const ongoingEvents = classified.ongoing;
+  const upcomingEvents = classified.upcoming;
 
   return (
     <View className="flex-1 bg-white relative">
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#0F172A" />
+          <ActivityIndicator size="large" color="#395886" />
         </View>
       ) : (
         <ScrollView
@@ -78,11 +86,12 @@ const Home = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#0F172A"
+              tintColor="#395886"
+              colors={["#395886"]}
             />
           }
         >
-          {/* CustomCalendar self-manages both EventPickerModal and EventDetailModal */}
+          {/* CustomCalendar self-manages highlighted dates */}
           <CustomCalendar
             selectedDate={selectedDate}
             onSelectDate={(date) => setSelectedDate(date)}
@@ -90,31 +99,62 @@ const Home = () => {
             events={events}
           />
 
+          {/* Ongoing Events Section (Shows automatically if an event is happening today) */}
+          {ongoingEvents.length > 0 && (
+            <View className="mt-8">
+              <View className="flex-row items-center gap-2 mb-3">
+                <Text className="text-3xl font-bold text-brand-500">
+                  Happening Now
+                </Text>
+              </View>
+
+              {ongoingEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onPress={handleOpenCardModal}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Upcoming Events Header */}
           <View className="mt-8 mb-4">
             <Text className="text-3xl font-bold text-brand-500">
               Upcoming Events
             </Text>
           </View>
 
+          {/* Events List or Appealing Empty State */}
           {upcomingEvents.length > 0 ? (
             upcomingEvents.map((event) => (
-              <TouchableOpacity
+              <EventCard
                 key={event.id}
-                activeOpacity={0.85}
-                onPress={() => handleOpenCardModal(event)}
-              >
-                <EventCard event={event} />
-              </TouchableOpacity>
+                event={event}
+                onPress={handleOpenCardModal}
+              />
             ))
           ) : (
-            <Text className="text-sm font-medium text-slate-400 mt-2">
-              No upcoming events found.
-            </Text>
+            <View className="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 items-center justify-center my-2">
+              {/* Badge Icon */}
+              <View className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 items-center justify-center mb-3.5 shadow-2xs">
+                <CalendarDays size={28} color="#395886" />
+              </View>
+
+              <Text className="text-base font-bold text-brand-500 tracking-tight">
+                No Upcoming Events
+              </Text>
+
+              <Text className="text-xs text-slate-400 text-center mt-1.5 max-w-[240px] leading-relaxed font-medium">
+                There are no scheduled events coming up. Tap the button below to
+                create one.
+              </Text>
+            </View>
           )}
         </ScrollView>
       )}
 
-      {/* Modal only for tapping the bottom Upcoming EventCards */}
+      {/* Modal for tapping EventCards */}
       <EventDetailModal
         visible={cardModalVisible}
         event={selectedCardEvent}
@@ -134,7 +174,7 @@ const Home = () => {
           shadowRadius: 5,
         }}
       >
-        <Plus size={28} color="#ffffff" />
+        <Plus size={26} color="#ffffff" />
       </TouchableOpacity>
     </View>
   );

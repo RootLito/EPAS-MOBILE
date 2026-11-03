@@ -1,11 +1,13 @@
+// app/(admin)/event/index.tsx (or your events screen file)
 import { EventCard } from "@/components/EventCard";
 import { EventDetailModal } from "@/components/EventDetailModal";
 import { QRCodeModal } from "@/components/QRCodeModal";
-import { getEvents } from "@/services/eventService";
+import { eventClassificationService } from "@/services/eventClassificationService";
+import { deleteEvent, getEvents } from "@/services/eventService";
 import { Event } from "@/types";
 import { useRouter } from "expo-router";
-import { Plus, Search, X } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { CalendarDays, Plus, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -43,7 +45,9 @@ export default function EventIndex() {
   const fetchEvents = async () => {
     try {
       const data = await getEvents();
-      setEvents(data);
+      // Enrich events with real-time dynamic classification status
+      const enriched = eventClassificationService.enrichEvents(data || []);
+      setEvents(enriched);
     } catch (error: any) {
       console.error("Failed to fetch events:", error);
     } finally {
@@ -61,18 +65,24 @@ export default function EventIndex() {
     fetchEvents();
   };
 
-  // Filter events by tab status and search query
-  const filteredEvents = events.filter((event) => {
-    const matchesTab =
-      selectedTab === "All" ||
-      event.status?.toLowerCase() === selectedTab.toLowerCase();
+  // Filter events by tab classification and search query
+  const filteredEvents = useMemo(() => {
+    // 1. Filter by classification tab using eventClassificationService
+    const tabFiltered = eventClassificationService.filterByTab(
+      events,
+      selectedTab,
+    );
 
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.venue?.address?.toLowerCase().includes(searchQuery.toLowerCase());
+    // 2. Filter by search query (Title or Venue Address)
+    if (!searchQuery.trim()) return tabFiltered;
 
-    return matchesTab && matchesSearch;
-  });
+    const q = searchQuery.toLowerCase().trim();
+    return tabFiltered.filter(
+      (event) =>
+        event.title.toLowerCase().includes(q) ||
+        event.venue?.address?.toLowerCase().includes(q),
+    );
+  }, [events, selectedTab, searchQuery]);
 
   const handleEditEvent = (event: Event) => {
     router.push(`/(admin)/event/${event.id}/edit` as any);
@@ -81,14 +91,21 @@ export default function EventIndex() {
   const handleDeleteEvent = (event: Event) => {
     Alert.alert(
       "Delete Event",
-      `Are you sure you want to delete "${event.title}"?`,
+      `Are you sure you want to delete "${event.title}"? This action cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            setEvents((prev) => prev.filter((e) => e.id !== event.id));
+          onPress: async () => {
+            try {
+              await deleteEvent(event.id);
+              setEvents((prev) => prev.filter((e) => e.id !== event.id));
+              Alert.alert("Deleted", "Event deleted successfully.");
+            } catch (error: any) {
+              console.error("Failed to delete event:", error);
+              Alert.alert("Error", error?.message || "Failed to delete event.");
+            }
           },
         },
       ],
@@ -106,7 +123,7 @@ export default function EventIndex() {
         }
       >
         {/* Page Title */}
-        <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight">
+        <Text className="text-3xl font-extrabold text-brand-500 mb-4 tracking-tight mt-2">
           Events
         </Text>
 
@@ -135,8 +152,10 @@ export default function EventIndex() {
                 <TouchableOpacity
                   key={tab}
                   onPress={() => setSelectedTab(tab)}
-                  className={`px-4 py-2 rounded-full ${
-                    isActive ? "bg-brand-500" : "bg-white border-slate-200"
+                  className={`px-4 py-2 rounded-full border ${
+                    isActive
+                      ? "bg-brand-500 border-brand-500"
+                      : "bg-white border-slate-200"
                   }`}
                 >
                   <Text
@@ -155,7 +174,7 @@ export default function EventIndex() {
         {/* Event List */}
         {loading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#0F172A" />
+            <ActivityIndicator size="large" color="#395886" />
           </View>
         ) : filteredEvents.length > 0 ? (
           filteredEvents.map((event) => (
@@ -166,13 +185,22 @@ export default function EventIndex() {
               onEdit={handleEditEvent}
               onDelete={handleDeleteEvent}
               onImagePress={(url) => setSelectedImageUrl(url)}
-              onQrPress={(e) => setSelectedQrEvent(e)}
             />
           ))
         ) : (
-          <View className="py-12 items-center justify-center">
-            <Text className="text-base font-semibold text-slate-400">
-              No events found.
+          <View className="bg-slate-50 border border-slate-200/80 rounded-3xl p-8 items-center justify-center my-2">
+            {/* Badge Icon */}
+            <View className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 items-center justify-center mb-3.5 shadow-2xs">
+              <CalendarDays size={28} color="#395886" />
+            </View>
+
+            <Text className="text-base font-bold text-brand-500 tracking-tight">
+              No Upcoming Events
+            </Text>
+
+            <Text className="text-xs text-slate-400 text-center mt-1.5 max-w-[240px] leading-relaxed font-medium">
+              There are no scheduled events coming up. Tap the button below to
+              create one.
             </Text>
           </View>
         )}

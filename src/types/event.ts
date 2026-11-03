@@ -1,6 +1,6 @@
 import { CreateVenueInput, Venue } from "./venue";
 
-export type TimelineType = "in_out" | "in_breakout_breakin_out";
+export type TimelineType = "time_in_only" | "in_out" | "in_breakout_breakin_out";
 export type EventStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 export interface EventAttachment {
@@ -19,6 +19,8 @@ export interface Event {
   details?: string;
   start_date: string;
   end_date: string;
+  break_out_date?: string;
+  break_in_date?: string;
   timeline_type: TimelineType;
   qr_code: string;
   qr_image_url?: string;
@@ -35,6 +37,8 @@ export interface CreateEventInput {
   details?: string;
   start_date: string;
   end_date: string;
+  break_out_date?: string;
+  break_in_date?: string;
   timeline_type: TimelineType;
   venue: CreateVenueInput;
   attachments?: { file_name: string; file_url: string; size_bytes?: number }[];

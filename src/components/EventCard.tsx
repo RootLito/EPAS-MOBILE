@@ -1,6 +1,14 @@
 import { Event } from "@/types";
-import { Calendar, Edit3, MapPin, QrCode, Trash2 } from "lucide-react-native";
+import {
+    Calendar,
+    Edit3,
+    Image as ImageIcon,
+    MapPin,
+    Trash2,
+} from "lucide-react-native";
+import { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { ImageGalleryModal } from "./ImageGalleryModal";
 
 interface EventCardProps {
   event: Event;
@@ -8,7 +16,6 @@ interface EventCardProps {
   onEdit?: (event: Event) => void;
   onDelete?: (event: Event) => void;
   onImagePress?: (url: string) => void;
-  onQrPress?: (event: Event) => void;
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
@@ -29,8 +36,10 @@ export function EventCard({
   onEdit,
   onDelete,
   onImagePress,
-  onQrPress,
 }: EventCardProps) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const startDate = new Date(event.start_date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -40,98 +49,136 @@ export function EventCard({
   const statusKey = event.status?.toLowerCase() || "upcoming";
   const badgeStyle = STATUS_STYLES[statusKey] || STATUS_STYLES.upcoming;
 
+  const attachments = event.attachments || [];
+  const imageUrls = attachments.map((att) => att.file_url).filter(Boolean);
+  const primaryImage = imageUrls[0];
+  const imageCount = imageUrls.length;
+
+  const handleImageContainerPress = () => {
+    if (imageUrls.length > 0) {
+      setSelectedImage(primaryImage);
+      setModalVisible(true);
+    }
+  };
+
+  const handleSelectImage = (url: string) => {
+    setSelectedImage(url);
+    onImagePress?.(url);
+  };
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => onPress?.(event)}
-      className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-200/80 shadow-sm"
-    >
-      {/* 1. Top Bar: Action Buttons on Left, Status Badge on Right End */}
-      <View className="flex-row justify-between items-center mb-3">
-        {/* Small Status Badge (Right End) */}
-        <View
-          className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${badgeStyle.bg}`}
+    <View>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onPress?.(event)}
+        className="bg-slate-50 h-36 rounded-2xl mb-4 border border-slate-200/80 flex-row overflow-hidden"
+      >
+        {/* Left: Picture Container with dynamic full height matching */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={handleImageContainerPress}
+          className="w-44 bg-slate-200 relative justify-center items-center"
         >
-          <View className={`w-2 h-2 rounded-full ${badgeStyle.dot}`} />
-          <Text className={`text-xs font-bold capitalize ${badgeStyle.text}`}>
-            {statusKey}
-          </Text>
-        </View>
-        {/* Buttons (Left End) */}
-        <View className="flex-row items-center gap-2">
-          {onEdit && (
-            <TouchableOpacity
-              onPress={() => onEdit(event)}
-              className="p-1.5 rounded-lg bg-slate-200/60"
-            >
-              <Edit3 size={15} color="#475569" />
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity
-              onPress={() => onDelete(event)}
-              className="p-1.5 rounded-lg bg-red-100"
-            >
-              <Trash2 size={15} color="#EF4444" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* 2. Event Title */}
-      <Text className="text-xl font-extrabold text-slate-900 mb-2">
-        {event.title}
-      </Text>
-
-      {/* 3. Venue & Date/Time */}
-      <View className="gap-1.5 mb-3">
-        {event.venue?.address && (
-          <View className="flex-row items-center gap-2">
-            <MapPin size={15} color="#64748B" />
-            <Text
-              className="text-xs text-slate-600 font-medium flex-1"
-              numberOfLines={1}
-            >
-              {event.venue.address}
-            </Text>
-          </View>
-        )}
-
-        <View className="flex-row items-center gap-2">
-          <Calendar size={15} color="#64748B" />
-          <Text className="text-xs text-slate-600 font-medium">
-            {startDate}
-          </Text>
-        </View>
-      </View>
-
-      {/* 4. Attachments & QR Button Row (Right Aligned) */}
-      <View className="flex-row justify-end items-center gap-1.5 pt-1">
-        {/* Attachment Thumbnail Images */}
-        {event.attachments?.map((att) => (
-          <TouchableOpacity
-            key={att.id || att.file_url}
-            activeOpacity={0.8}
-            onPress={() => onImagePress?.(att.file_url)}
-            className="rounded-lg overflow-hidden border border-slate-200 bg-white"
-          >
+          {primaryImage ? (
             <Image
-              source={{ uri: att.file_url }}
-              className="w-12 h-12 rounded-lg"
+              source={{ uri: primaryImage }}
+              className="w-full h-full min-h-[110px]"
               resizeMode="cover"
             />
-          </TouchableOpacity>
-        ))}
+          ) : (
+            <View className="w-full h-28 justify-center items-center">
+              <ImageIcon size={24} color="#94A3B8" />
+            </View>
+          )}
 
-        {/* QR Button at the Right End */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => onQrPress?.(event)}
-          className="w-12 h-12 rounded-lg bg-slate-900 justify-center items-center shadow-sm"
-        >
-          <QrCode size={20} color="#FFFFFF" />
+          {/* Upper Left: Status Badge Overlay */}
+          <View
+            className={`absolute top-2 left-2 flex-row items-center gap-1 px-2 py-0.5 rounded-full ${badgeStyle.bg} shadow-xs z-10`}
+          >
+            <View className={`w-1.5 h-1.5 rounded-full ${badgeStyle.dot}`} />
+            <Text
+              className={`text-[10px] font-bold capitalize ${badgeStyle.text}`}
+            >
+              {statusKey}
+            </Text>
+          </View>
+
+          {/* Bottom Right: Picture Count Overlay */}
+          {imageCount > 0 && (
+            <View className="absolute bottom-2 right-2 bg-slate-900/70 px-2 py-0.5 rounded-md z-10">
+              <Text className="text-[10px] text-white font-bold">
+                {imageCount} {imageCount === 1 ? "pic" : "pics"}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+
+        {/* Right: Details Container */}
+        <View className="flex-1 p-4">
+          {/* Top Section: Title & Actions */}
+          <View className="flex-row justify-between items-start gap-2">
+            <Text
+              className="text-xl font-bold text-brand-500 tracking-tight flex-1"
+              numberOfLines={2}
+            >
+              {event.title}
+            </Text>
+
+            {/* Action Buttons */}
+            <View className="flex-row items-center gap-1.5">
+              {onEdit && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => onEdit(event)}
+                  className="w-7 h-7 rounded-lg bg-brand-100 items-center justify-center"
+                >
+                  <Edit3 size={13} color="#64748B" />
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => onDelete(event)}
+                  className="w-7 h-7 rounded-lg bg-rose-100 items-center justify-center"
+                >
+                  <Trash2 size={13} color="#F43F5E" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Bottom Section: Venue & Date/Time Metadata */}
+          <View className="gap-1 mt-2">
+            {event.venue?.address && (
+              <View className="flex-row items-center gap-1.5">
+                <MapPin size={16} color="#94A3B8" />
+                <Text
+                  className="text-xs text-slate-500 font-medium flex-1"
+                  numberOfLines={1}
+                >
+                  {event.venue.address}
+                </Text>
+              </View>
+            )}
+
+            <View className="flex-row items-center gap-1.5">
+              <Calendar size={16} color="#94A3B8" />
+              <Text className="text-xs text-slate-500 font-medium">
+                {startDate}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Separated Image Gallery Modal */}
+      <ImageGalleryModal
+        visible={modalVisible}
+        images={imageUrls}
+        selectedImage={selectedImage}
+        onSelectImage={handleSelectImage}
+        onClose={() => setModalVisible(false)}
+      />
+    </View>
   );
 }

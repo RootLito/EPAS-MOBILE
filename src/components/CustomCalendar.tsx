@@ -1,8 +1,19 @@
+// components/CustomCalendar.tsx
 import { EventDetailModal } from "@/components/EventDetailModal";
 import { EventPickerModal } from "@/components/EventPickerModal";
 import { Event } from "@/types";
+import DateTimePicker, {
+    DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import { Calendar as CalendarIcon } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { PanResponder, Text, TouchableOpacity, View } from "react-native";
+import {
+    PanResponder,
+    Platform,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 interface CustomCalendarProps {
   selectedDate?: string;
@@ -36,6 +47,7 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
   onEventPress,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const isSwipingRef = useRef(false);
 
@@ -73,6 +85,32 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
     setTimeout(() => {
       isSwipingRef.current = false;
     }, 350);
+  };
+
+  // Quick navigation via native Date Picker
+  const handleDatePickerChange = (
+    event: DateTimePickerEvent,
+    date?: Date | undefined,
+  ) => {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+    if (date) {
+      if (Platform.OS === "ios") {
+        setShowDatePicker(false);
+      }
+      // Jump calendar to the picked month and year
+      setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+
+      // Select the picked date
+      const formattedMonth = String(date.getMonth() + 1).padStart(2, "0");
+      const formattedDay = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${date.getFullYear()}-${formattedMonth}-${formattedDay}`;
+
+      if (onSelectDate) {
+        onSelectDate(dateStr);
+      }
+    }
   };
 
   const panResponder = useRef(
@@ -133,12 +171,10 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
     });
 
     if (dayEvents.length === 1) {
-      // 1 Event -> Open EventDetailModal directly
       setSelectedDetailEvent(dayEvents[0]);
       setDetailModalVisible(true);
       if (onEventPress) onEventPress(dayEvents[0]);
     } else if (dayEvents.length > 1) {
-      // 2+ Events -> Open centered EventPickerModal first
       setPickerEvents(dayEvents);
       setPickerDateStr(dateStr);
       setPickerModalVisible(true);
@@ -156,11 +192,19 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
 
   return (
     <View className="w-full" {...panResponder.panHandlers}>
-      {/* Month & Year Header (Outside background container) */}
+      {/* Month & Year Header with Calendar Jump Icon */}
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-bold text-brand-500">
           {MONTH_NAMES[month]} {year}
         </Text>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowDatePicker(true)}
+          className="p-2.5 rounded-2xl bg-brand-50 border border-brand-100 items-center justify-center"
+        >
+          <CalendarIcon size={20} color="#395886" />
+        </TouchableOpacity>
       </View>
 
       {/* Calendar Card Container */}
@@ -231,6 +275,16 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
           })}
         </View>
       </View>
+
+      {/* Date Picker Modal for quick navigation */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={currentMonth}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={handleDatePickerChange}
+        />
+      )}
 
       {/* Centered Picker Modal for 2+ events */}
       <EventPickerModal

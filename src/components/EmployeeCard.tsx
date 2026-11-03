@@ -27,21 +27,10 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ item }) => {
       </View>
 
       {/* Styled Split Name */}
-      <View className="items-center mb-2 w-full">
-        <Text
-          className="text-2xl font-bold text-slate-900 tracking-tight leading-tight text-center"
-          numberOfLines={1}
-        >
-          {firstName}
+      <View className="items-center mb-2 w-full px-4">
+        <Text className="text-xl font-bold text-brand-500 tracking-tight leading-tight text-center">
+          {`${firstName}${lastName ? ` ${lastName}` : ""}`}
         </Text>
-        {lastName ? (
-          <Text
-            className="text-2xl font-light text-slate-400 tracking-tight leading-tight text-center"
-            numberOfLines={1}
-          >
-            {lastName}
-          </Text>
-        ) : null}
       </View>
 
       {/* Position */}

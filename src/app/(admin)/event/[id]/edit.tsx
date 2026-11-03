@@ -6,8 +6,6 @@ import {
     Calendar,
     Clock,
     FileText,
-    Layers,
-    Map,
     MapPin,
     Paperclip,
     Trash2,
@@ -25,7 +23,6 @@ import {
     View,
 } from "react-native";
 
-import LocationPickerModal from "@/components/LocationPickerModal";
 import { supabase } from "@/lib/supabase";
 import {
     deleteEvent,
@@ -99,28 +96,27 @@ export default function EditEventScreen() {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("09:00 AM");
   const [endDate, setEndDate] = useState("");
-  const [endTime, setEndTime] = useState("05:00 PM");
 
+  // Timeline Type (all 3 options matching web)
   const [timelineType, setTimelineType] = useState<
-    "in_out" | "in_breakout_breakin_out"
+    "time_in_only" | "in_out" | "in_breakout_breakin_out"
   >("in_out");
 
-  // Venue & Coordinates
+  // Times
+  const [timeIn, setTimeIn] = useState("09:00 AM");
+  const [timeOut, setTimeOut] = useState("05:00 PM");
+  const [breakOut, setBreakOut] = useState("12:00 PM");
+  const [breakIn, setBreakIn] = useState("01:00 PM");
+
+  // Venue (Map button removed)
   const [venueAddress, setVenueAddress] = useState("");
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Notice / Memo Attachment
   const [noticeImage, setNoticeImage] = useState<string | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<
     { file_name: string; file_url: string }[]
   >([]);
-
-  // QR Code
-  const [qrCode, setQrCode] = useState<string>("");
 
   useEffect(() => {
     if (id) {
@@ -135,27 +131,31 @@ export default function EditEventScreen() {
       if (data) {
         setTitle(data.title || "");
         setDetails(data.details || "");
+
+        // Dates & Times
         setStartDate(formatDateStr(data.start_date));
-        setStartTime(formatTimeStr(data.start_date) || "09:00 AM");
+        setTimeIn(formatTimeStr(data.start_date) || "09:00 AM");
         setEndDate(formatDateStr(data.end_date));
-        setEndTime(formatTimeStr(data.end_date) || "05:00 PM");
+        setTimeOut(formatTimeStr(data.end_date) || "05:00 PM");
+
+        // Break Times
+        if (data.break_out_date) {
+          setBreakOut(formatTimeStr(data.break_out_date) || "12:00 PM");
+        }
+        if (data.break_in_date) {
+          setBreakIn(formatTimeStr(data.break_in_date) || "01:00 PM");
+        }
+
         setTimelineType(data.timeline_type || "in_out");
 
         if (data.venue) {
           setVenueAddress(data.venue.address || "");
-          setLatitude(data.venue.latitude ?? null);
-          setLongitude(data.venue.longitude ?? null);
         }
 
         if (data.attachments && data.attachments.length > 0) {
           setExistingAttachments(data.attachments);
           setNoticeImage(data.attachments[0].file_url);
         }
-
-        setQrCode(
-          data.qr_code ||
-            `EVT-PREVIEW-${data.title?.replace(/\s+/g, "").toUpperCase()}`,
-        );
       }
     } catch (error: any) {
       console.error("Error loading event:", error);
@@ -229,12 +229,14 @@ export default function EditEventScreen() {
     setSaving(true);
 
     try {
-      let attachments: { file_name: string; file_url: string }[] = [];
+      let attachments: {
+        file_name: string;
+        file_url: string;
+        size_bytes?: number;
+      }[] = [];
 
-      // 1. If noticeImage was removed/null, attachments remains empty []
       if (noticeImage) {
         if (noticeImage.startsWith("file:") || noticeImage.startsWith("ph:")) {
-          // 2. If it's a newly selected local file, upload it
           const uploadedFile = await uploadNoticeAttachment(noticeImage);
           attachments = [
             {
@@ -243,15 +245,20 @@ export default function EditEventScreen() {
             },
           ];
         } else {
-          // 3. If it's the existing remote image URL that wasn't removed, keep existing
-          attachments = existingAttachments;
+          attachments = existingAttachments.map((att) => ({
+            file_name: att.file_name || "notice.jpg",
+            file_url: att.file_url,
+          }));
         }
       }
 
-      const startIso = parseDateTimeToISO(startDate, startTime);
-      const endIso = parseDateTimeToISO(endDate, endTime);
+      const startIso = parseDateTimeToISO(startDate, timeIn);
+      const endIso =
+        timelineType === "time_in_only"
+          ? startIso
+          : parseDateTimeToISO(endDate, timeOut);
 
-      await updateEvent({
+      const payload: any = {
         id: id as string,
         title,
         details,
@@ -260,11 +267,16 @@ export default function EditEventScreen() {
         timeline_type: timelineType,
         venue: {
           address: venueAddress,
-          latitude: latitude ?? undefined,
-          longitude: longitude ?? undefined,
         },
         attachments,
-      });
+      };
+
+      if (timelineType === "in_breakout_breakin_out") {
+        payload.break_out_date = parseDateTimeToISO(startDate, breakOut);
+        payload.break_in_date = parseDateTimeToISO(startDate, breakIn);
+      }
+
+      await updateEvent(payload);
 
       setSaving(false);
       Alert.alert("Success", "Event updated successfully!", [
@@ -321,7 +333,7 @@ export default function EditEventScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Title with Delete Action */}
-        <View className="flex-row items-center justify-between my-4">
+        <View className="flex-row items-center justify-between mb-4 mt-2">
           <Text className="text-3xl font-extrabold text-brand-500">
             Edit Event
           </Text>
@@ -375,66 +387,11 @@ export default function EditEventScreen() {
           />
         </View>
 
-        {/* Timeline Type Section */}
+        {/* 1. Event Dates */}
         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-          Timeline Type
+          Event Dates
         </Text>
-        <View className="flex-row gap-3 mb-6">
-          <TouchableOpacity
-            onPress={() => setTimelineType("in_out")}
-            className={`flex-1 p-3.5 rounded-xl border flex-row items-center justify-center gap-2 ${
-              timelineType === "in_out"
-                ? "bg-slate-900 border-slate-900"
-                : "bg-slate-50 border-slate-200"
-            }`}
-          >
-            <Layers
-              size={18}
-              color={timelineType === "in_out" ? "#FFFFFF" : "#64748B"}
-            />
-            <Text
-              className={`font-semibold text-sm ${
-                timelineType === "in_out" ? "text-white" : "text-slate-700"
-              }`}
-            >
-              Standard (In/Out)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setTimelineType("in_breakout_breakin_out")}
-            className={`flex-1 p-3.5 rounded-xl border flex-row items-center justify-center gap-2 ${
-              timelineType === "in_breakout_breakin_out"
-                ? "bg-slate-900 border-slate-900"
-                : "bg-slate-50 border-slate-200"
-            }`}
-          >
-            <Layers
-              size={18}
-              color={
-                timelineType === "in_breakout_breakin_out"
-                  ? "#FFFFFF"
-                  : "#64748B"
-              }
-            />
-            <Text
-              className={`font-semibold text-sm ${
-                timelineType === "in_breakout_breakin_out"
-                  ? "text-white"
-                  : "text-slate-700"
-              }`}
-            >
-              With Breakouts
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Schedule & Timing Section */}
-        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-          Schedule & Timing
-        </Text>
-
-        <View className="flex-row gap-3 mb-4">
+        <View className="flex-row gap-3 mb-5">
           <View className="flex-1">
             <Text className="text-sm font-semibold text-slate-700 mb-1.5">
               Start Date
@@ -453,24 +410,6 @@ export default function EditEventScreen() {
 
           <View className="flex-1">
             <Text className="text-sm font-semibold text-slate-700 mb-1.5">
-              Start Time
-            </Text>
-            <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
-              <Clock size={18} color="#64748B" />
-              <TextInput
-                value={startTime}
-                onChangeText={setStartTime}
-                placeholder="09:00 AM"
-                placeholderTextColor="#94A3B8"
-                className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
-              />
-            </View>
-          </View>
-        </View>
-
-        <View className="flex-row gap-3 mb-6">
-          <View className="flex-1">
-            <Text className="text-sm font-semibold text-slate-700 mb-1.5">
               End Date
             </Text>
             <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
@@ -484,25 +423,204 @@ export default function EditEventScreen() {
               />
             </View>
           </View>
+        </View>
 
-          <View className="flex-1">
+        {/* 2. Timeline Type (Matching Web Admin: 3 Options) */}
+        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+          Timeline Type
+        </Text>
+        <View className="flex-row gap-2 mb-5">
+          <TouchableOpacity
+            onPress={() => setTimelineType("time_in_only")}
+            className={`flex-1 p-3 rounded-xl border items-center justify-center ${
+              timelineType === "time_in_only"
+                ? "bg-brand-500 border-brand-500"
+                : "bg-slate-50 border-slate-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-xs text-center ${
+                timelineType === "time_in_only"
+                  ? "text-white"
+                  : "text-slate-700"
+              }`}
+            >
+              Time in only
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setTimelineType("in_out")}
+            className={`flex-1 p-3 rounded-xl border items-center justify-center ${
+              timelineType === "in_out"
+                ? "bg-brand-500 border-brand-500"
+                : "bg-slate-50 border-slate-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-xs text-center ${
+                timelineType === "in_out" ? "text-white" : "text-slate-700"
+              }`}
+            >
+              Time in - out
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setTimelineType("in_breakout_breakin_out")}
+            className={`flex-1 p-3 rounded-xl border items-center justify-center ${
+              timelineType === "in_breakout_breakin_out"
+                ? "bg-brand-500 border-brand-500"
+                : "bg-slate-50 border-slate-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-xs text-center ${
+                timelineType === "in_breakout_breakin_out"
+                  ? "text-white"
+                  : "text-slate-700"
+              }`}
+            >
+              With Breakouts
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 3. Time Configuration */}
+        <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+          Time Configuration
+        </Text>
+
+        {/* Mode A: Time In Only */}
+        {timelineType === "time_in_only" && (
+          <View className="mb-5">
             <Text className="text-sm font-semibold text-slate-700 mb-1.5">
-              End Time
+              Time In
             </Text>
             <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
               <Clock size={18} color="#64748B" />
               <TextInput
-                value={endTime}
-                onChangeText={setEndTime}
-                placeholder="05:00 PM"
+                value={timeIn}
+                onChangeText={setTimeIn}
+                placeholder="09:00 AM"
                 placeholderTextColor="#94A3B8"
                 className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
               />
             </View>
           </View>
-        </View>
+        )}
 
-        {/* Venue Information Section */}
+        {/* Mode B: In and Out */}
+        {timelineType === "in_out" && (
+          <View className="flex-row gap-3 mb-5">
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                Time In
+              </Text>
+              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                <Clock size={18} color="#64748B" />
+                <TextInput
+                  value={timeIn}
+                  onChangeText={setTimeIn}
+                  placeholder="09:00 AM"
+                  placeholderTextColor="#94A3B8"
+                  className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                />
+              </View>
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                Time Out
+              </Text>
+              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                <Clock size={18} color="#64748B" />
+                <TextInput
+                  value={timeOut}
+                  onChangeText={setTimeOut}
+                  placeholder="05:00 PM"
+                  placeholderTextColor="#94A3B8"
+                  className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Mode C: With Breakouts */}
+        {timelineType === "in_breakout_breakin_out" && (
+          <View className="gap-3 mb-5">
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                  Time In
+                </Text>
+                <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                  <Clock size={18} color="#64748B" />
+                  <TextInput
+                    value={timeIn}
+                    onChangeText={setTimeIn}
+                    placeholder="08:00 AM"
+                    placeholderTextColor="#94A3B8"
+                    className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                  Break Out
+                </Text>
+                <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                  <Clock size={18} color="#64748B" />
+                  <TextInput
+                    value={breakOut}
+                    onChangeText={setBreakOut}
+                    placeholder="12:00 PM"
+                    placeholderTextColor="#94A3B8"
+                    className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                  Break In
+                </Text>
+                <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                  <Clock size={18} color="#64748B" />
+                  <TextInput
+                    value={breakIn}
+                    onChangeText={setBreakIn}
+                    placeholder="01:00 PM"
+                    placeholderTextColor="#94A3B8"
+                    className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-slate-700 mb-1.5">
+                  Time Out
+                </Text>
+                <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">
+                  <Clock size={18} color="#64748B" />
+                  <TextInput
+                    value={timeOut}
+                    onChangeText={setTimeOut}
+                    placeholder="05:00 PM"
+                    placeholderTextColor="#94A3B8"
+                    className="flex-1 ml-2 text-slate-900 font-medium text-sm p-0"
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Venue Information (Map button removed) */}
         <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
           Venue Information
         </Text>
@@ -511,25 +629,15 @@ export default function EditEventScreen() {
           <Text className="text-sm font-semibold text-slate-700 mb-1.5">
             Venue Address *
           </Text>
-          <View className="flex-row items-center gap-2">
-            <View className="flex-1 flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3">
-              <MapPin size={18} color="#64748B" />
-              <TextInput
-                value={venueAddress}
-                onChangeText={setVenueAddress}
-                placeholder="Enter address or select on map..."
-                placeholderTextColor="#94A3B8"
-                className="flex-1 ml-2.5 text-slate-900 font-medium text-base p-0"
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowLocationPicker(true)}
-              className="w-12 h-12 bg-slate-900 rounded-xl justify-center items-center"
-            >
-              <Map size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+          <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3">
+            <MapPin size={18} color="#64748B" />
+            <TextInput
+              value={venueAddress}
+              onChangeText={setVenueAddress}
+              placeholder="Enter address..."
+              placeholderTextColor="#94A3B8"
+              className="flex-1 ml-2.5 text-slate-900 font-medium text-base p-0"
+            />
           </View>
         </View>
 
@@ -571,28 +679,13 @@ export default function EditEventScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Assigned QR Code Card */}
-        {/* <Text className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-          Event QR Code
-        </Text>
-        <EventQRCodeCard
-          qrCode={
-            qrCode ||
-            (title
-              ? `EVT-PREVIEW-${title.replace(/\s+/g, "").toUpperCase()}`
-              : "EVT-AUTO-GENERATED")
-          }
-          title="Assigned Event QR Code"
-          size={140}
-        /> */}
-
         {/* Action Buttons */}
         <View className="flex-col gap-2 mt-6">
           <TouchableOpacity
             activeOpacity={0.8}
             disabled={saving}
             onPress={handleUpdateEvent}
-            className="bg-slate-900 py-4 rounded-2xl flex-row justify-center items-center shadow-sm"
+            className="bg-brand-500 py-4 rounded-2xl flex-row justify-center items-center shadow-sm"
           >
             {saving ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -614,19 +707,6 @@ export default function EditEventScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Location Picker Modal */}
-      <LocationPickerModal
-        visible={showLocationPicker}
-        onClose={() => setShowLocationPicker(false)}
-        onSelectLocation={({ address, lat, lng }) => {
-          setVenueAddress(address);
-          setLatitude(lat);
-          setLongitude(lng);
-        }}
-        initialLat={latitude || undefined}
-        initialLng={longitude || undefined}
-      />
     </View>
   );
 }
