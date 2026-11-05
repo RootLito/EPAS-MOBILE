@@ -94,7 +94,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView className="flex-1">
+    <ScrollView className="flex-1 bg-white">
       <View className="flex-row items-center gap-5 mb-8 px-6">
         <View className="relative">
           <View className="w-32 h-32 rounded-full bg-slate-100 items-center justify-center border border-slate-200/60 shadow-sm overflow-hidden">
@@ -146,22 +146,24 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* EDIT DETAILS BUTTON: Kept visible but disabled when isEditing is true */}
       <View className="flex-row justify-end items-center mb-4 px-6">
-        {!isEditing && (
-          <TouchableOpacity
-            onPress={() => setIsEditing(true)}
-            className="flex-row items-center gap-2 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-100"
-          >
-            <Edit2 size={13} color="#395886" />
-            <Text className="text-brand-500 text-sm">Edit Details</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={() => setIsEditing(true)}
+          disabled={isEditing}
+          className={`flex-row items-center gap-2 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-100 ${
+            isEditing ? "opacity-50" : ""
+          }`}
+        >
+          <Edit2 size={13} color="#395886" />
+          <Text className="text-brand-500 text-sm">Edit Details</Text>
+        </TouchableOpacity>
       </View>
 
       {/* FIELD LIST CONTAINER */}
       <View className="gap-3 px-6 mb-8">
         {/* Full Name */}
-        <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
+        <View className="flex-row items-center justify-between p-3.5 bg-brand-50 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
             <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
               <User size={18} color="#395886" />
@@ -192,7 +194,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Position */}
-        <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
+        <View className="flex-row items-center justify-between p-3.5 bg-brand-50 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
             <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
               <Briefcase size={18} color="#395886" />
@@ -223,7 +225,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Office / Station */}
-        <View className="flex-row items-center justify-between p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
+        <View className="flex-row items-center justify-between p-3.5 bg-brand-50 rounded-2xl border border-slate-100">
           <View className="flex-row items-center gap-3.5 flex-1 mr-2">
             <View className="w-10 h-10 rounded-full bg-brand-100/70 items-center justify-center">
               <Building size={18} color="#395886" />
@@ -292,7 +294,7 @@ export default function ProfileScreen() {
 
       {/* SAVE / CANCEL ACTION BUTTONS */}
       {isEditing && (
-        <View className="flex-row items-center gap-3 mb-6">
+        <View className="flex-row items-center px-6 gap-3 mb-10">
           <TouchableOpacity
             onPress={handleCancel}
             disabled={loading}
@@ -305,7 +307,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             onPress={handleSave}
             disabled={loading}
-            className="flex-1 py-3.5 bg-brand-600 rounded-2xl items-center flex-row justify-center gap-1.5 shadow-md"
+            className="flex-1 py-3.5 bg-brand-500 rounded-2xl items-center flex-row justify-center gap-1.5 shadow-md"
           >
             {loading ? (
               <ActivityIndicator size="small" color="#ffffff" />

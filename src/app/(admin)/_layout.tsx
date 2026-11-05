@@ -55,7 +55,7 @@ export default function AdminLayout() {
       >
         <View className="flex-row items-center gap-3 mb-8 pt-2 border-b border-white/10 pb-4">
           <Image
-            source={require("../../../assets/images/white.png")}
+            source={require("@/assets/images/white.png")}
             style={{ width: 72, height: 72 }}
             resizeMode="contain"
           />
@@ -106,7 +106,7 @@ export default function AdminLayout() {
         <View className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10">
           <View className="w-11 h-11 rounded-full bg-white justify-center items-center p-1 shadow-sm overflow-hidden">
             <Image
-              source={require("../../../assets/images/bfar.png")}
+              source={require("@/assets/images/bfar.png")}
               style={{ width: "100%", height: "100%" }}
               resizeMode="contain"
             />
@@ -157,7 +157,7 @@ export default function AdminLayout() {
         }}
         renderDrawerContent={renderDrawerContent}
       >
-        <View className="flex-1">
+        <View className="flex-1 bg-white">
           <SafeAreaView edges={["top"]}>
             <View className="flex-row items-center justify-between px-5 py-3">
               <TouchableOpacity
@@ -168,7 +168,7 @@ export default function AdminLayout() {
               </TouchableOpacity>
 
               <Image
-                source={require("../../../assets/images/bfar.png")}
+                source={require("@/assets/images/bfar.png")}
                 style={{ width: 72, height: 72 }}
                 resizeMode="contain"
               />

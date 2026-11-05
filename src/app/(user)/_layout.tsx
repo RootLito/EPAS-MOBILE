@@ -28,27 +28,26 @@ export default function UserLayout() {
   const navItems = [
     {
       label: "Home",
-      path: "/(user)/home",
+      path: "/(user)/user-home",
       icon: Home,
     },
     {
       label: "Events",
-      path: "/(user)/event",
+      path: "/(user)/user-event",
       icon: Calendar,
     },
     {
       label: "Attendance",
-      path: "/(user)/attendance",
+      path: "/(user)/user-attendance",
       icon: UserCheck,
     },
     {
       label: "Profile",
-      path: "/(user)/profile",
+      path: "/(user)/user-profile",
       icon: User,
     },
   ];
 
-  // Helper to get initials if user image is not available
   const getInitials = (name?: string) => {
     if (!name) return "U";
     return name
@@ -70,7 +69,7 @@ export default function UserLayout() {
       >
         <View className="flex-row items-center gap-3 mb-8 pt-2 border-b border-white/10 pb-4">
           <Image
-            source={require("../../../assets/images/white.png")}
+            source={require("@/assets/images/white.png")}
             style={{ width: 72, height: 72 }}
             resizeMode="contain"
           />
@@ -87,7 +86,7 @@ export default function UserLayout() {
             const Icon = item.icon;
             const isActive =
               pathname === item.path ||
-              (item.path === "/(user)/home" && pathname === "/(user)");
+              (item.path === "/(user)/user-home" && pathname === "/(user)");
 
             return (
               <TouchableOpacity
@@ -119,7 +118,7 @@ export default function UserLayout() {
       {/* Footer Section: Flat Profile Card + Logout */}
       <View className="gap-3">
         <TouchableOpacity
-          onPress={() => navigateTo("/(user)/profile")}
+          onPress={() => navigateTo("/(user)/user-profile")}
           className="flex-row items-center gap-3 p-3 rounded-2xl bg-white/10 active:bg-white/20"
         >
           {user?.avatar_url ? (
@@ -179,7 +178,7 @@ export default function UserLayout() {
         }}
         renderDrawerContent={renderDrawerContent}
       >
-        <View className="flex-1">
+        <View className="flex-1 bg-white">
           <SafeAreaView edges={["top"]}>
             <View className="flex-row items-center justify-between px-5 py-3">
               <TouchableOpacity
@@ -190,7 +189,7 @@ export default function UserLayout() {
               </TouchableOpacity>
 
               <Image
-                source={require("../../../assets/images/bfar.png")}
+                source={require("@/assets/images/bfar.png")}
                 style={{ width: 72, height: 72 }}
                 resizeMode="contain"
               />

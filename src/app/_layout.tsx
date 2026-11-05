@@ -8,7 +8,6 @@ import {
 } from "react-native-reanimated";
 import "../global.css";
 
-// Disable Reanimated strict-mode logger warnings during render
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
@@ -16,21 +15,31 @@ configureReanimatedLogger({
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
-  const segments = useSegments();
+  const rawSegments = useSegments();
+  const segments = rawSegments as string[];
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) return;
 
+    if (segments.length === 0) return;
+
+    const inAuthGroup = segments[0] === "login";
     const inAdminGroup = segments[0] === "(admin)";
     const inUserGroup = segments[0] === "(user)";
 
     if (!user) {
-      router.replace("/login");
-    } else if (user.role === "admin" && !inAdminGroup) {
-      router.replace("/(admin)/home");
-    } else if (user.role === "client" && !inUserGroup) {
-      router.replace("/(user)/home");
+      if (!inAuthGroup) {
+        router.replace("/login");
+      }
+    } else if (user.role === "admin") {
+      if (!inAdminGroup) {
+        router.replace("/(admin)/home");
+      }
+    } else if (user.role === "client") {
+      if (!inUserGroup) {
+        router.replace("/(user)/user-home");
+      }
     }
   }, [user, isLoading, segments]);
 

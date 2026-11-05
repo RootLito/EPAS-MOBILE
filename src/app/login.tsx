@@ -75,7 +75,7 @@ export default function LoginScreen() {
       {/* Top Header */}
       <View className="items-center mt-4 px-6">
         <Image
-          source={require("../../assets/images/bfar.png")}
+          source={require("@/assets/images/bfar.png")} // <-- 1 level up from app/
           style={{ width: 180, height: 180 }}
           resizeMode="contain"
           className="mb-3"
@@ -124,7 +124,7 @@ export default function LoginScreen() {
 
       <View className="w-full relative items-center justify-end">
         <Image
-          source={require("../../assets/images/back.png")}
+          source={require("@/assets/images/back.png")}
           className="w-full h-40"
           resizeMode="cover"
         />
