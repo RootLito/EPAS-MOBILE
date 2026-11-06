@@ -1,5 +1,6 @@
 import { authService } from "@/services/authService";
 import { UserProfile } from "@/types/user";
+import { Briefcase, Building, User } from "lucide-react-native";
 import { useState } from "react";
 import {
     ActivityIndicator,
@@ -49,50 +50,95 @@ export function RegisterModal({ visible, code, onSuccess, onCancel }: Props) {
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View className="flex-1 bg-black/60 justify-center px-6">
-        <View className="bg-white rounded-2xl p-6 shadow-xl">
-          <Text className="text-xl font-bold text-gray-900">
+        <View className="bg-white rounded-3xl p-6 shadow-xl">
+          {/* Header */}
+          <Text className="text-xl font-bold text-slate-800">
             New ID Detected
           </Text>
-          <Text className="text-xs text-gray-500 mb-4">Code: {code}</Text>
-
-          <View className="gap-y-3 mb-6">
-            <TextInput
-              placeholder="Full Name"
-              value={fullname}
-              onChangeText={setFullname}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-800"
-            />
-            <TextInput
-              placeholder="Position"
-              value={position}
-              onChangeText={setPosition}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-800"
-            />
-            <TextInput
-              placeholder="Office"
-              value={office}
-              onChangeText={setOffice}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-800"
-            />
+          <View className="flex-row items-center gap-1.5 mt-0.5 mb-5">
+            <Text className="text-xs text-slate-400">Scanned ID:</Text>
+            <Text className="text-xs font-semibold text-brand-500">{code}</Text>
           </View>
 
-          <View className="flex-row justify-end space-x-3">
+          {/* Form Fields with Labels */}
+          <View className="gap-y-3.5 mb-6">
+            {/* Full Name */}
+            <View className="p-3 bg-brand-50 rounded-2xl border border-slate-100 flex-row items-center gap-3">
+              <View className="w-9 h-9 rounded-full bg-brand-100/70 items-center justify-center">
+                <User size={16} color="#395886" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Full Name
+                </Text>
+                <TextInput
+                  placeholder="e.g. Juan Dela Cruz"
+                  placeholderTextColor="#94a3b8"
+                  value={fullname}
+                  onChangeText={setFullname}
+                  className="font-bold text-slate-800 text-sm p-0 mt-0.5"
+                />
+              </View>
+            </View>
+
+            {/* Position */}
+            <View className="p-3 bg-brand-50 rounded-2xl border border-slate-100 flex-row items-center gap-3">
+              <View className="w-9 h-9 rounded-full bg-brand-100/70 items-center justify-center">
+                <Briefcase size={16} color="#395886" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Position / Designation
+                </Text>
+                <TextInput
+                  placeholder="e.g. Computer Programmer I"
+                  placeholderTextColor="#94a3b8"
+                  value={position}
+                  onChangeText={setPosition}
+                  className="font-bold text-slate-800 text-sm p-0 mt-0.5"
+                />
+              </View>
+            </View>
+
+            {/* Office / Station */}
+            <View className="p-3 bg-brand-50 rounded-2xl border border-slate-100 flex-row items-center gap-3">
+              <View className="w-9 h-9 rounded-full bg-brand-100/70 items-center justify-center">
+                <Building size={16} color="#395886" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Office / Station
+                </Text>
+                <TextInput
+                  placeholder="e.g. RFIMU"
+                  placeholderTextColor="#94a3b8"
+                  value={office}
+                  onChangeText={setOffice}
+                  className="font-bold text-slate-800 text-sm p-0 mt-0.5"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View className="flex-row items-center gap-3">
             <TouchableOpacity
               onPress={onCancel}
-              className="px-5 py-3 rounded-xl bg-gray-100"
+              disabled={submitting}
+              className="flex-1 py-3.5 rounded-2xl bg-slate-100 items-center justify-center"
             >
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+              <Text className="text-slate-600 font-bold text-sm">Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleRegister}
               disabled={submitting}
-              className="px-5 py-3 rounded-xl bg-blue-600 flex-row items-center justify-center"
+              className="flex-1 py-3.5 rounded-2xl bg-brand-500 items-center justify-center shadow-md shadow-brand-500/20"
             >
               {submitting ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color="#ffffff" size="small" />
               ) : (
-                <Text className="text-white font-semibold">Register</Text>
+                <Text className="text-white font-bold text-sm">Register</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -12,7 +12,11 @@
       "url": "https://u.expo.dev/2203dc43-39bb-49d1-bd5f-a7cea56d75a1"
     },
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.bfar.eps",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.bfar.eps",
@@ -40,7 +44,8 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep class androidx.work.impl.WorkDatabase* { *; }\n-keep class androidx.work.** { *; }"
+            "extraProguardRules": "-keep class androidx.work.impl.WorkDatabase* { *; }\n-keep class androidx.work.** { *; }",
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
